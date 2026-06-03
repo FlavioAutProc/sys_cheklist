@@ -1,0 +1,1558 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Padaria Ponto Certo — Sistema de Produção</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0f0e0b;
+    --surface: #181612;
+    --surface2: #211f1a;
+    --surface3: #2a2720;
+    --border: #333028;
+    --accent: #e8a020;
+    --accent2: #f0c060;
+    --accent3: #c06010;
+    --text: #f0ebe0;
+    --text2: #b0a890;
+    --text3: #706858;
+    --green: #4caf82;
+    --red: #e05060;
+    --blue: #5090e0;
+    --radius: 10px;
+    --radius-sm: 6px;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── SIDEBAR ── */
+  #sidebar {
+    position: fixed; top: 0; left: 0; width: 220px; height: 100vh;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    z-index: 100;
+  }
+  .sb-logo {
+    padding: 22px 20px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .sb-logo span {
+    font-family: 'Syne', sans-serif;
+    font-size: 18px; font-weight: 800;
+    color: var(--accent);
+    letter-spacing: -0.5px;
+  }
+  .sb-logo small {
+    display: block;
+    color: var(--text3);
+    font-size: 11px;
+    margin-top: 2px;
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.5px;
+  }
+  .sb-nav { flex: 1; padding: 12px 10px; overflow-y: auto; }
+  .sb-section { color: var(--text3); font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; padding: 10px 10px 6px; font-family: 'DM Mono', monospace; }
+  .sb-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 10px; border-radius: var(--radius-sm);
+    cursor: pointer; color: var(--text2); transition: all .15s;
+    font-size: 13px; font-weight: 500; margin-bottom: 2px;
+  }
+  .sb-item:hover { background: var(--surface2); color: var(--text); }
+  .sb-item.active { background: var(--accent); color: #000; font-weight: 600; }
+  .sb-item svg { width: 16px; height: 16px; flex-shrink: 0; }
+  .sb-footer {
+    padding: 14px 16px;
+    border-top: 1px solid var(--border);
+    font-size: 11px; color: var(--text3);
+  }
+
+  /* ── MAIN ── */
+  #main {
+    margin-left: 220px;
+    min-height: 100vh;
+    display: flex; flex-direction: column;
+  }
+  .topbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 28px;
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 50;
+  }
+  .topbar-title { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700; color: var(--text); }
+  .topbar-right { display: flex; gap: 10px; align-items: center; }
+  .btn {
+    padding: 8px 16px; border-radius: var(--radius-sm); border: none;
+    cursor: pointer; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600;
+    transition: all .15s; display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn-primary { background: var(--accent); color: #000; }
+  .btn-primary:hover { background: var(--accent2); }
+  .btn-ghost { background: var(--surface2); color: var(--text2); border: 1px solid var(--border); }
+  .btn-ghost:hover { background: var(--surface3); color: var(--text); }
+  .btn-danger { background: var(--red); color: #fff; }
+  .btn-green { background: var(--green); color: #000; }
+  .btn-sm { padding: 5px 11px; font-size: 12px; }
+
+  #content { flex: 1; padding: 28px; }
+
+  /* ── VIEWS ── */
+  .view { display: none; animation: fadeIn .2s ease; }
+  .view.active { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  .card-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 16px; padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .card-title {
+    font-family: 'Syne', sans-serif; font-weight: 700;
+    font-size: 14px; color: var(--accent);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .card-num {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--accent); color: #000;
+    font-size: 11px; font-weight: 800; display: grid; place-items: center;
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* ── GRID ── */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+
+  /* ── FORM ELEMENTS ── */
+  label { display: block; font-size: 12px; color: var(--text3); margin-bottom: 5px; font-weight: 500; }
+  input[type=text], input[type=date], input[type=time], input[type=number], select, textarea {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 8px 11px;
+    color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 13px;
+    transition: border-color .15s; outline: none;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 60px; }
+  select option { background: var(--surface2); }
+
+  /* ── CHECKLIST ITEMS ── */
+  .check-row {
+    display: grid; grid-template-columns: 1fr 80px 1fr;
+    gap: 10px; align-items: center;
+    padding: 9px 0; border-bottom: 1px solid var(--border);
+  }
+  .check-row:last-child { border-bottom: none; }
+  .check-label { font-size: 13px; color: var(--text2); }
+  .check-status {
+    display: flex; justify-content: center;
+  }
+  .check-toggle {
+    width: 28px; height: 28px; border-radius: 6px;
+    background: var(--surface3); border: 1.5px solid var(--border);
+    cursor: pointer; display: grid; place-items: center;
+    transition: all .15s; color: transparent;
+    font-size: 16px;
+  }
+  .check-toggle.checked { background: var(--green); border-color: var(--green); color: #fff; }
+  .obs-input { font-size: 12px; padding: 6px 9px; }
+
+  /* ── FLOW TABLE ── */
+  .flow-table { width: 100%; border-collapse: collapse; }
+  .flow-table th {
+    background: var(--surface3); color: var(--text3);
+    font-size: 11px; letter-spacing: 0.5px; text-transform: uppercase;
+    padding: 9px 12px; text-align: left; font-family: 'DM Mono', monospace;
+  }
+  .flow-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); }
+  .flow-table tr:last-child td { border-bottom: none; }
+  .flow-table input { max-width: 110px; }
+
+  /* ── EQUIPMENT TABLE ── */
+  .eq-table { width: 100%; border-collapse: collapse; }
+  .eq-table th {
+    background: var(--surface3); color: var(--text3);
+    font-size: 11px; letter-spacing: 0.5px; text-transform: uppercase;
+    padding: 9px 12px; text-align: center; font-family: 'DM Mono', monospace;
+  }
+  .eq-table th:first-child, .eq-table th:nth-child(2) { text-align: left; }
+  .eq-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); text-align: center; }
+  .eq-table td:first-child, .eq-table td:nth-child(2) { text-align: left; font-size: 13px; }
+  .eq-table tr:last-child td { border-bottom: none; }
+  .radio-group { display: flex; gap: 8px; justify-content: center; }
+  .radio-opt {
+    padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: 600;
+    cursor: pointer; border: 1.5px solid var(--border); color: var(--text3);
+    transition: all .15s; font-family: 'DM Mono', monospace;
+  }
+  .radio-opt:hover { border-color: var(--accent); color: var(--accent); }
+  .radio-opt.ok.sel { background: var(--green); border-color: var(--green); color: #000; }
+  .radio-opt.at.sel { background: var(--accent); border-color: var(--accent); color: #000; }
+  .radio-opt.in.sel { background: var(--red); border-color: var(--red); color: #fff; }
+
+  /* ── TIPO PRODUÇÃO ── */
+  .prod-row {
+    display: grid; grid-template-columns: 1fr 140px 160px;
+    gap: 10px; align-items: end; margin-bottom: 10px;
+  }
+
+  /* ── KPI CARDS ── */
+  .kpi-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    position: relative; overflow: hidden;
+  }
+  .kpi-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  }
+  .kpi-card.green::before { background: var(--green); }
+  .kpi-card.amber::before { background: var(--accent); }
+  .kpi-card.blue::before { background: var(--blue); }
+  .kpi-card.red::before { background: var(--red); }
+  .kpi-val {
+    font-family: 'Syne', sans-serif; font-size: 28px; font-weight: 800;
+    color: var(--text); line-height: 1; margin: 4px 0 6px;
+  }
+  .kpi-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.8px; font-family: 'DM Mono', monospace; }
+  .kpi-sub { font-size: 12px; color: var(--text2); margin-top: 4px; }
+
+  /* ── CHARTS ── */
+  .chart-wrap { position: relative; height: 220px; }
+
+  /* ── HISTORY TABLE ── */
+  .hist-table { width: 100%; border-collapse: collapse; }
+  .hist-table th {
+    background: var(--surface3); color: var(--text3);
+    font-size: 11px; letter-spacing: 0.5px; text-transform: uppercase;
+    padding: 10px 14px; text-align: left; font-family: 'DM Mono', monospace;
+  }
+  .hist-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .hist-table tr:hover td { background: var(--surface2); }
+  .hist-table tr:last-child td { border-bottom: none; }
+  .badge {
+    display: inline-block; padding: 2px 8px; border-radius: 4px;
+    font-size: 11px; font-weight: 600; font-family: 'DM Mono', monospace;
+  }
+  .badge-green { background: rgba(76,175,130,.2); color: var(--green); }
+  .badge-amber { background: rgba(232,160,32,.2); color: var(--accent); }
+  .badge-red { background: rgba(224,80,96,.2); color: var(--red); }
+  .badge-blue { background: rgba(80,144,224,.2); color: var(--blue); }
+
+  /* ── FILTER BAR ── */
+  .filter-bar {
+    display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px 20px; margin-bottom: 20px;
+  }
+  .filter-bar > div { min-width: 140px; }
+
+  /* ── PROGRESS BAR ── */
+  .prog-wrap { height: 6px; background: var(--surface3); border-radius: 3px; overflow: hidden; margin-top: 8px; }
+  .prog-fill { height: 100%; border-radius: 3px; transition: width .4s ease; }
+
+  /* ── MODAL OVERLAY ── */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.75);
+    z-index: 200; display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none; transition: opacity .2s;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); width: 460px; max-width: 95vw;
+    max-height: 90vh; overflow-y: auto;
+    transform: translateY(20px); transition: transform .2s;
+  }
+  .modal-overlay.open .modal { transform: translateY(0); }
+  .modal-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 22px; border-bottom: 1px solid var(--border);
+  }
+  .modal-title { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; color: var(--accent); }
+  .modal-body { padding: 22px; }
+  .modal-foot { padding: 14px 22px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; }
+  .close-btn { background: none; border: none; color: var(--text3); cursor: pointer; font-size: 20px; line-height: 1; }
+  .close-btn:hover { color: var(--text); }
+
+  /* ── EMPTY STATE ── */
+  .empty {
+    text-align: center; padding: 60px 20px; color: var(--text3);
+  }
+  .empty-icon { font-size: 40px; margin-bottom: 12px; opacity: .4; }
+  .empty-text { font-size: 14px; }
+
+  /* ── SECTION DIVIDER ── */
+  .section-title {
+    font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 800;
+    color: var(--text); margin-bottom: 20px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .section-title::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+
+  /* ── TAG ── */
+  .tag {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: var(--surface3); border: 1px solid var(--border);
+    padding: 3px 9px; border-radius: 20px; font-size: 11px; color: var(--text2);
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* ── INFO BOX ── */
+  .info-box {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--radius-sm); padding: 10px 14px;
+    font-size: 12px; color: var(--text2); margin-bottom: 16px;
+  }
+
+  /* ── TOAST ── */
+  #toast {
+    position: fixed; bottom: 24px; right: 24px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-left: 3px solid var(--green);
+    padding: 12px 18px; border-radius: var(--radius-sm);
+    font-size: 13px; color: var(--text); z-index: 300;
+    transform: translateY(60px); opacity: 0; transition: all .25s;
+    box-shadow: 0 8px 24px rgba(0,0,0,.4);
+  }
+  #toast.show { transform: translateY(0); opacity: 1; }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--border); }
+
+  @media (max-width: 900px) {
+    #sidebar { width: 60px; }
+    #sidebar .sb-logo span, #sidebar .sb-logo small, .sb-item span, .sb-section { display: none; }
+    #main { margin-left: 60px; }
+    .grid-4 { grid-template-columns: 1fr 1fr; }
+    .grid-3 { grid-template-columns: 1fr; }
+    .grid-2 { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav id="sidebar">
+  <div class="sb-logo">
+    <span>🍞 Padaria</span>
+    <small>PONTO CERTO</small>
+  </div>
+  <div class="sb-nav">
+    <div class="sb-section">Principal</div>
+    <div class="sb-item active" onclick="nav('checklist')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+      <span>Checklist</span>
+    </div>
+    <div class="sb-item" onclick="nav('dashboard')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      <span>Dashboard</span>
+    </div>
+    <div class="sb-section">Dados</div>
+    <div class="sb-item" onclick="nav('historico')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <span>Histórico</span>
+    </div>
+    <div class="sb-item" onclick="nav('relatorios')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      <span>Relatórios</span>
+    </div>
+    <div class="sb-item" onclick="nav('backup')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      <span>Backup</span>
+    </div>
+  </div>
+  <div class="sb-footer">v1.0.0</div>
+</nav>
+
+<!-- MAIN -->
+<div id="main">
+  <div class="topbar">
+    <div class="topbar-title" id="topbar-title">Checklist de Produção</div>
+    <div class="topbar-right">
+      <span class="tag" id="today-tag">📅 —</span>
+      <button class="btn btn-ghost btn-sm" onclick="nav('historico')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Histórico
+      </button>
+      <button class="btn btn-primary btn-sm" onclick="salvarChecklist()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        Salvar
+      </button>
+    </div>
+  </div>
+
+  <div id="content">
+
+    <!-- ─── VIEW: CHECKLIST ─── -->
+    <div id="view-checklist" class="view active">
+      <!-- HEADER INFO -->
+      <div class="card">
+        <div class="grid-3" style="gap:16px">
+          <div>
+            <label>Data</label>
+            <input type="date" id="ck-data">
+          </div>
+          <div>
+            <label>Turno</label>
+            <select id="ck-turno">
+              <option value="Manhã">☀️ Manhã</option>
+              <option value="Tarde">🌤️ Tarde</option>
+              <option value="Noite">🌙 Noite</option>
+            </select>
+          </div>
+          <div>
+            <label>Equipe / Responsável</label>
+            <input type="text" id="ck-equipe" placeholder="Nome da equipe ou responsável">
+          </div>
+        </div>
+      </div>
+
+      <!-- 1. TIPO DE PRODUÇÃO -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><div class="card-num">1</div> Tipo de Produção</div>
+          <button class="btn btn-ghost btn-sm" onclick="addProd()">+ Produto</button>
+        </div>
+        <div id="prod-list">
+          <!-- rows injected -->
+        </div>
+      </div>
+
+      <!-- 2. ABERTURA DO SETOR -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><div class="card-num">2</div> Checklist de Abertura do Setor</div>
+          <span id="prog-abertura" class="badge badge-amber">0 / 11</span>
+        </div>
+        <div class="check-row" style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;padding-bottom:4px;border-bottom:1px solid var(--border)">
+          <span>PROCESSO</span><span style="text-align:center">STATUS</span><span>OBSERVAÇÕES</span>
+        </div>
+        <div id="list-abertura"></div>
+        <div class="prog-wrap" style="margin-top:12px">
+          <div class="prog-fill" id="fill-abertura" style="background:var(--accent);width:0%"></div>
+        </div>
+      </div>
+
+      <!-- 3. PRÉ-PRODUÇÃO -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><div class="card-num">3</div> Checklist de Pré-Produção</div>
+          <span id="prog-pre" class="badge badge-amber">0 / 6</span>
+        </div>
+        <div class="check-row" style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;padding-bottom:4px;border-bottom:1px solid var(--border)">
+          <span>PROCESSO</span><span style="text-align:center">STATUS</span><span>OBSERVAÇÕES</span>
+        </div>
+        <div id="list-pre"></div>
+        <div class="prog-wrap" style="margin-top:12px">
+          <div class="prog-fill" id="fill-pre" style="background:var(--accent);width:0%"></div>
+        </div>
+      </div>
+
+      <!-- 4. FLUXO OPERACIONAL -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><div class="card-num">4</div> Fluxo Operacional</div>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="flow-table">
+            <thead>
+              <tr>
+                <th>Processo</th>
+                <th>Hora Início</th>
+                <th>Hora Fim</th>
+                <th>Tempo Total</th>
+                <th>Problemas / Obs</th>
+              </tr>
+            </thead>
+            <tbody id="flow-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 5. EQUIPAMENTOS -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><div class="card-num">5</div> Checklist Técnico de Equipamentos</div>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="eq-table">
+            <thead>
+              <tr>
+                <th>Equipamento</th>
+                <th>Ponto de Verificação</th>
+                <th>OK</th>
+                <th>Atenção</th>
+                <th>Inoperante</th>
+                <th>Ação Necessária</th>
+              </tr>
+            </thead>
+            <tbody id="eq-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 6. OBSERVAÇÕES -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><div class="card-num">6</div> Observações e Ações Corretivas</div>
+          <button class="btn btn-ghost btn-sm" onclick="addObs()">+ Linha</button>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="flow-table">
+            <thead>
+              <tr>
+                <th>Local / Setor</th>
+                <th>Descrição do Problema</th>
+                <th>Correção / Melhoria</th>
+              </tr>
+            </thead>
+            <tbody id="obs-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:8px">
+        <button class="btn btn-ghost" onclick="limparChecklist()">🗑 Limpar</button>
+        <button class="btn btn-primary" onclick="salvarChecklist()">💾 Salvar Checklist</button>
+        <button class="btn btn-ghost" onclick="exportPDF()">📄 Exportar PDF</button>
+      </div>
+    </div>
+
+    <!-- ─── VIEW: DASHBOARD ─── -->
+    <div id="view-dashboard" class="view">
+      <div class="section-title">Dashboard de Produtividade</div>
+
+      <!-- KPIs -->
+      <div class="grid-4" style="margin-bottom:20px">
+        <div class="kpi-card green">
+          <div class="kpi-label">Registros Total</div>
+          <div class="kpi-val" id="kpi-total">0</div>
+          <div class="kpi-sub">checklists salvos</div>
+        </div>
+        <div class="kpi-card amber">
+          <div class="kpi-label">Taxa Abertura</div>
+          <div class="kpi-val" id="kpi-abertura">—</div>
+          <div class="kpi-sub">média conformidade</div>
+        </div>
+        <div class="kpi-card blue">
+          <div class="kpi-label">Taxa Pré-Prod.</div>
+          <div class="kpi-val" id="kpi-pre">—</div>
+          <div class="kpi-sub">média conformidade</div>
+        </div>
+        <div class="kpi-card red">
+          <div class="kpi-label">Equip. c/ Atenção</div>
+          <div class="kpi-val" id="kpi-eq">0</div>
+          <div class="kpi-sub">nos últimos registros</div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Conformidade por Seção</div>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="chart-conformidade"></canvas>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Registros por Turno</div>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="chart-turno"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Tempo de Produção por Processo (últimos 10 reg.)</div>
+        </div>
+        <div class="chart-wrap" style="height:240px">
+          <canvas id="chart-tempo"></canvas>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Status dos Equipamentos</div>
+          </div>
+          <div class="chart-wrap" style="height:200px">
+            <canvas id="chart-eq"></canvas>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Checklists por Dia da Semana</div>
+          </div>
+          <div class="chart-wrap" style="height:200px">
+            <canvas id="chart-diasemana"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── VIEW: HISTÓRICO ─── -->
+    <div id="view-historico" class="view">
+      <div class="section-title">Histórico de Checklists</div>
+
+      <div class="filter-bar">
+        <div>
+          <label>De</label>
+          <input type="date" id="filt-de">
+        </div>
+        <div>
+          <label>Até</label>
+          <input type="date" id="filt-ate">
+        </div>
+        <div>
+          <label>Turno</label>
+          <select id="filt-turno">
+            <option value="">Todos</option>
+            <option>Manhã</option>
+            <option>Tarde</option>
+            <option>Noite</option>
+          </select>
+        </div>
+        <div>
+          <label>Equipe</label>
+          <input type="text" id="filt-equipe" placeholder="Buscar equipe...">
+        </div>
+        <div style="display:flex;gap:8px;align-items:flex-end;padding-bottom:1px">
+          <button class="btn btn-primary btn-sm" onclick="filtrarHistorico()">🔍 Filtrar</button>
+          <button class="btn btn-ghost btn-sm" onclick="limparFiltros()">✕ Limpar</button>
+        </div>
+      </div>
+
+      <div class="card" style="padding:0;overflow:hidden">
+        <table class="hist-table" id="hist-table-el">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Data</th>
+              <th>Turno</th>
+              <th>Equipe</th>
+              <th>Abertura</th>
+              <th>Pré-Prod.</th>
+              <th>Equipamentos</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="hist-body"></tbody>
+        </table>
+        <div id="hist-empty" class="empty" style="display:none">
+          <div class="empty-icon">📋</div>
+          <div class="empty-text">Nenhum registro encontrado</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── VIEW: RELATÓRIOS ─── -->
+    <div id="view-relatorios" class="view">
+      <div class="section-title">Relatórios</div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📄 Exportar PDF</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div class="info-box">Gera um PDF formatado com todos os dados do checklist selecionado.</div>
+            <div>
+              <label>Selecionar Registro</label>
+              <select id="sel-exp-pdf"></select>
+            </div>
+            <button class="btn btn-primary" onclick="exportPDFById()">📄 Gerar PDF</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📊 Exportar Dados (JSON)</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div class="info-box">Exporta todos os registros como JSON para análise externa ou importação.</div>
+            <div>
+              <label>Período</label>
+              <div class="grid-2" style="gap:8px">
+                <input type="date" id="exp-de">
+                <input type="date" id="exp-ate">
+              </div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-ghost" style="flex:1" onclick="exportJSON()">⬇ Exportar JSON</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📥 Importar Dados (JSON)</div>
+        </div>
+        <div class="info-box">Importe registros exportados anteriormente. Os dados serão mesclados ao histórico existente.</div>
+        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+          <input type="file" id="import-file" accept=".json" style="color:var(--text2);font-size:13px;flex:1">
+          <button class="btn btn-green" onclick="importarJSON()">📥 Importar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── VIEW: BACKUP ─── -->
+    <div id="view-backup" class="view">
+      <div class="section-title">Backup e Dados</div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">💾 Backup Completo</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <div class="info-box">Salva todos os dados locais em arquivo .json para segurança.</div>
+            <div class="kpi-card amber" style="margin:0">
+              <div class="kpi-label">Total de Registros</div>
+              <div class="kpi-val" id="bk-total">0</div>
+              <div class="kpi-sub" id="bk-size">0 KB armazenados</div>
+            </div>
+            <button class="btn btn-primary" onclick="exportJSON()">⬇ Baixar Backup Completo</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">⚠️ Gerenciar Dados</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <div class="info-box" style="border-left-color:var(--red)">Atenção: as operações abaixo são irreversíveis. Faça backup antes de limpar dados.</div>
+            <button class="btn btn-ghost" onclick="limparHistoricoConfirm()">🗑 Limpar Todo o Histórico</button>
+            <button class="btn btn-ghost" onclick="importarJSON()">📥 Restaurar de Backup</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📋 Resumo dos Dados Salvos</div>
+        </div>
+        <div id="backup-resumo" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px"></div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<!-- MODAL: VER DETALHE -->
+<div class="modal-overlay" id="modal-detalhe">
+  <div class="modal" style="width:600px">
+    <div class="modal-head">
+      <div class="modal-title">Detalhe do Checklist</div>
+      <button class="close-btn" onclick="fecharModal('modal-detalhe')">×</button>
+    </div>
+    <div class="modal-body" id="modal-detalhe-body"></div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="fecharModal('modal-detalhe')">Fechar</button>
+      <button class="btn btn-primary" onclick="exportPDFAtual()">📄 PDF</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: CONFIRMAR -->
+<div class="modal-overlay" id="modal-confirm">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title">Confirmar Ação</div>
+      <button class="close-btn" onclick="fecharModal('modal-confirm')">×</button>
+    </div>
+    <div class="modal-body" id="modal-confirm-body"></div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="fecharModal('modal-confirm')">Cancelar</button>
+      <button class="btn btn-danger" id="btn-confirm-ok">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  DATA
+// ═══════════════════════════════════════════════════════
+const ABERTURA_ITEMS = [
+  'Masseira funcionando','Fornos ligados/aquecendo','Ingredientes separados',
+  'Farinha disponível','Fermento disponível','Assadeiras disponíveis',
+  'Telas organizadas','Bancadas limpas','Utensílios disponíveis',
+  'Produção do dia definida','EPI/Higiene pessoal da equipe'
+];
+const PRE_ITEMS = [
+  'Receita conferida','Ingredientes pesados','Quantidade confirmada',
+  'Sequência de Produção definida','Equipamentos livres','Equipe alinhada'
+];
+const FLOW_ITEMS = [
+  'Pesagem','Mistura','Descanso','Modelagem/Cilindrar','Fermentação','Forno'
+];
+const EQ_ITEMS = [
+  {equip:'Masseira', ponto:'Motor / Velocidade'},
+  {equip:'Masseira', ponto:'Gancho / Cuba'},
+  {equip:'Masseira', ponto:'Segurança / Tampa'},
+  {equip:'Forno', ponto:'Temperatura / Resistência'},
+  {equip:'Forno', ponto:'Timer / Painel'},
+  {equip:'Forno', ponto:'Câmara / Selagem'},
+  {equip:'Cilindro', ponto:'Passagem / Lâminas'},
+  {equip:'Cilindro', ponto:'Segurança'},
+  {equip:'Balança', ponto:'Calibração'},
+  {equip:'Balança', ponto:'Visor / Bateria'},
+  {equip:'Fatiador Pão', ponto:'Lâminas / Afiação'},
+  {equip:'Fatiador Pão', ponto:'Tampa / Proteção'},
+  {equip:'Fatiador Pão', ponto:'Motor / Correia'},
+];
+
+let DB = JSON.parse(localStorage.getItem('padaria_db') || '[]');
+let currentDetail = null;
+
+// ═══════════════════════════════════════════════════════
+//  NAV
+// ═══════════════════════════════════════════════════════
+const titles = {checklist:'Checklist de Produção',dashboard:'Dashboard de Produtividade',historico:'Histórico de Registros',relatorios:'Relatórios',backup:'Backup e Dados'};
+function nav(page) {
+  document.querySelectorAll('.sb-item').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  event?.target?.closest('.sb-item')?.classList.add('active');
+  document.querySelectorAll('.sb-item').forEach(el => {
+    if(el.getAttribute('onclick')?.includes(page)) el.classList.add('active');
+  });
+  document.getElementById('view-'+page).classList.add('active');
+  document.getElementById('topbar-title').textContent = titles[page] || page;
+  if(page==='dashboard') renderDashboard();
+  if(page==='historico') renderHistorico();
+  if(page==='relatorios') renderRelatorioSelect();
+  if(page==='backup') renderBackup();
+}
+
+// ═══════════════════════════════════════════════════════
+//  INIT CHECKLIST
+// ═══════════════════════════════════════════════════════
+function initChecklist() {
+  // Date
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('ck-data').value = today;
+  document.getElementById('today-tag').textContent = '📅 ' + formatDate(today);
+
+  // Prod rows
+  const prodList = document.getElementById('prod-list');
+  prodList.innerHTML = '';
+  for(let i=0;i<3;i++) addProd();
+
+  // Abertura
+  const listAb = document.getElementById('list-abertura');
+  listAb.innerHTML = '';
+  ABERTURA_ITEMS.forEach((item,i) => listAb.appendChild(makeCheckRow(item, 'ab', i)));
+
+  // Pre
+  const listPre = document.getElementById('list-pre');
+  listPre.innerHTML = '';
+  PRE_ITEMS.forEach((item,i) => listPre.appendChild(makeCheckRow(item, 'pre', i)));
+
+  // Flow
+  const flowBody = document.getElementById('flow-body');
+  flowBody.innerHTML = '';
+  FLOW_ITEMS.forEach((f,i) => {
+    flowBody.innerHTML += `<tr>
+      <td style="font-size:13px;font-weight:500">${f}</td>
+      <td><input type="time" id="fl-ini-${i}"></td>
+      <td><input type="time" id="fl-fim-${i}"></td>
+      <td><input type="text" id="fl-tot-${i}" placeholder="calc." style="background:var(--surface3)" readonly></td>
+      <td><input type="text" id="fl-prob-${i}" placeholder="—"></td>
+    </tr>`;
+  });
+  // auto calc
+  FLOW_ITEMS.forEach((_,i) => {
+    document.getElementById('fl-fim-'+i).addEventListener('change', () => calcTempo(i));
+    document.getElementById('fl-ini-'+i).addEventListener('change', () => calcTempo(i));
+  });
+
+  // Equipamentos
+  const eqBody = document.getElementById('eq-body');
+  eqBody.innerHTML = '';
+  EQ_ITEMS.forEach((eq,i) => {
+    eqBody.innerHTML += `<tr>
+      <td>${eq.equip}</td>
+      <td>${eq.ponto}</td>
+      <td><div class="radio-group"><span class="radio-opt ok" onclick="setEq(${i},'ok',this)">OK</span></div></td>
+      <td><div class="radio-group"><span class="radio-opt at" onclick="setEq(${i},'at',this)">Atenção</span></div></td>
+      <td><div class="radio-group"><span class="radio-opt in" onclick="setEq(${i},'in',this)">Inop.</span></div></td>
+      <td><input type="text" id="eq-acao-${i}" placeholder="Descrever ação..."></td>
+    </tr>`;
+  });
+
+  // Obs
+  const obsBody = document.getElementById('obs-body');
+  obsBody.innerHTML = '';
+  for(let i=0;i<5;i++) addObs();
+}
+
+function makeCheckRow(label, prefix, idx) {
+  const div = document.createElement('div');
+  div.className = 'check-row';
+  div.innerHTML = `
+    <span class="check-label">${label}</span>
+    <div class="check-status">
+      <div class="check-toggle" id="${prefix}-ck-${idx}" onclick="toggleCheck('${prefix}-ck-${idx}','${prefix}')">✓</div>
+    </div>
+    <input type="text" class="obs-input" id="${prefix}-obs-${idx}" placeholder="Observação...">
+  `;
+  return div;
+}
+
+function toggleCheck(id, prefix) {
+  const el = document.getElementById(id);
+  el.classList.toggle('checked');
+  updateProgress(prefix);
+}
+
+function updateProgress(prefix) {
+  const items = prefix === 'ab' ? ABERTURA_ITEMS : PRE_ITEMS;
+  const count = items.filter((_,i) => document.getElementById(`${prefix}-ck-${i}`)?.classList.contains('checked')).length;
+  const pct = Math.round(count/items.length*100);
+  document.getElementById(`prog-${prefix==='ab'?'abertura':'pre'}`).textContent = `${count} / ${items.length}`;
+  document.getElementById(`fill-${prefix==='ab'?'abertura':'pre'}`).style.width = pct+'%';
+  const fill = document.getElementById(`fill-${prefix==='ab'?'abertura':'pre'}`);
+  fill.style.background = pct === 100 ? 'var(--green)' : pct > 60 ? 'var(--accent)' : 'var(--red)';
+}
+
+function setEq(idx, status, el) {
+  const row = el.closest('tr');
+  row.querySelectorAll('.radio-opt').forEach(o => o.classList.remove('sel'));
+  el.classList.add('sel');
+}
+
+function addProd() {
+  const list = document.getElementById('prod-list');
+  const i = list.children.length;
+  const div = document.createElement('div');
+  div.className = 'prod-row';
+  div.innerHTML = `
+    <input type="text" id="prod-nome-${i}" placeholder="Nome do produto">
+    <input type="number" id="prod-kg-${i}" placeholder="Qtd kg" min="0" step="0.1">
+    <div style="display:flex;gap:6px;align-items:center">
+      <input type="text" id="prod-tempo-${i}" placeholder="0h 0min" style="flex:1">
+      <button class="btn btn-ghost btn-sm" style="padding:6px 8px;color:var(--red)" onclick="this.parentElement.parentElement.remove()">✕</button>
+    </div>
+  `;
+  list.appendChild(div);
+}
+
+function addObs() {
+  const body = document.getElementById('obs-body');
+  const i = body.children.length;
+  body.innerHTML += `<tr>
+    <td><input type="text" id="obs-local-${i}" placeholder="Ex: Forno 2"></td>
+    <td><input type="text" id="obs-desc-${i}" placeholder="Descrição do problema..."></td>
+    <td><input type="text" id="obs-corr-${i}" placeholder="Ação corretiva..."></td>
+  </tr>`;
+}
+
+function calcTempo(i) {
+  const ini = document.getElementById('fl-ini-'+i).value;
+  const fim = document.getElementById('fl-fim-'+i).value;
+  if(ini && fim) {
+    const [h1,m1] = ini.split(':').map(Number);
+    const [h2,m2] = fim.split(':').map(Number);
+    let diff = (h2*60+m2) - (h1*60+m1);
+    if(diff < 0) diff += 1440;
+    const h = Math.floor(diff/60), m = diff%60;
+    document.getElementById('fl-tot-'+i).value = `${h}h ${m.toString().padStart(2,'0')}min`;
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  COLETA DE DADOS
+// ═══════════════════════════════════════════════════════
+function coletarDados() {
+  const data = {
+    id: Date.now(),
+    data: document.getElementById('ck-data').value,
+    turno: document.getElementById('ck-turno').value,
+    equipe: document.getElementById('ck-equipe').value,
+    produtos: [],
+    abertura: { checks: [], obs: [], pct: 0 },
+    pre: { checks: [], obs: [], pct: 0 },
+    fluxo: [],
+    equipamentos: [],
+    observacoes: []
+  };
+
+  // Produtos
+  const prodList = document.getElementById('prod-list');
+  prodList.querySelectorAll('.prod-row').forEach((row, i) => {
+    const nome = document.getElementById('prod-nome-'+i)?.value;
+    const kg = document.getElementById('prod-kg-'+i)?.value;
+    const tempo = document.getElementById('prod-tempo-'+i)?.value;
+    if(nome) data.produtos.push({nome, kg, tempo});
+  });
+
+  // Abertura
+  ABERTURA_ITEMS.forEach((item, i) => {
+    const checked = document.getElementById('ab-ck-'+i)?.classList.contains('checked');
+    const obs = document.getElementById('ab-obs-'+i)?.value;
+    data.abertura.checks.push(checked ? 1 : 0);
+    data.abertura.obs.push(obs || '');
+  });
+  data.abertura.pct = Math.round(data.abertura.checks.filter(Boolean).length / ABERTURA_ITEMS.length * 100);
+
+  // Pre
+  PRE_ITEMS.forEach((item, i) => {
+    const checked = document.getElementById('pre-ck-'+i)?.classList.contains('checked');
+    const obs = document.getElementById('pre-obs-'+i)?.value;
+    data.pre.checks.push(checked ? 1 : 0);
+    data.pre.obs.push(obs || '');
+  });
+  data.pre.pct = Math.round(data.pre.checks.filter(Boolean).length / PRE_ITEMS.length * 100);
+
+  // Fluxo
+  FLOW_ITEMS.forEach((proc, i) => {
+    data.fluxo.push({
+      processo: proc,
+      inicio: document.getElementById('fl-ini-'+i)?.value || '',
+      fim: document.getElementById('fl-fim-'+i)?.value || '',
+      total: document.getElementById('fl-tot-'+i)?.value || '',
+      problema: document.getElementById('fl-prob-'+i)?.value || ''
+    });
+  });
+
+  // Equipamentos
+  EQ_ITEMS.forEach((eq, i) => {
+    const row = document.querySelectorAll('#eq-body tr')[i];
+    let status = '';
+    row?.querySelectorAll('.radio-opt').forEach(o => { if(o.classList.contains('sel')) status = o.classList.contains('ok')?'OK':o.classList.contains('at')?'Atenção':'Inoperante'; });
+    data.equipamentos.push({
+      equip: eq.equip, ponto: eq.ponto,
+      status, acao: document.getElementById('eq-acao-'+i)?.value || ''
+    });
+  });
+
+  // Obs
+  const obsBody = document.getElementById('obs-body');
+  obsBody.querySelectorAll('tr').forEach((row, i) => {
+    const local = document.getElementById('obs-local-'+i)?.value;
+    const desc = document.getElementById('obs-desc-'+i)?.value;
+    const corr = document.getElementById('obs-corr-'+i)?.value;
+    if(local || desc || corr) data.observacoes.push({local, desc, corr});
+  });
+
+  return data;
+}
+
+function salvarChecklist() {
+  const dados = coletarDados();
+  if(!dados.data) { toast('⚠️ Informe a data do checklist', 'amber'); return; }
+  DB.push(dados);
+  localStorage.setItem('padaria_db', JSON.stringify(DB));
+  toast('✅ Checklist salvo com sucesso!');
+}
+
+function limparChecklist() {
+  if(!confirm('Limpar o formulário atual?')) return;
+  initChecklist();
+}
+
+// ═══════════════════════════════════════════════════════
+//  HISTÓRICO
+// ═══════════════════════════════════════════════════════
+function renderHistorico(filtro = null) {
+  let dados = filtro ? filtro : [...DB].reverse();
+  const body = document.getElementById('hist-body');
+  const empty = document.getElementById('hist-empty');
+  body.innerHTML = '';
+  if(!dados.length) { empty.style.display='block'; return; }
+  empty.style.display = 'none';
+  dados.forEach((d, idx) => {
+    const abPct = d.abertura?.pct ?? 0;
+    const prePct = d.pre?.pct ?? 0;
+    const eqAt = d.equipamentos?.filter(e => e.status === 'Atenção' || e.status === 'Inoperante').length ?? 0;
+    body.innerHTML += `<tr>
+      <td><span class="tag">#${DB.indexOf(d)+1}</span></td>
+      <td>${formatDate(d.data)}</td>
+      <td>${d.turno || '—'}</td>
+      <td>${d.equipe || '—'}</td>
+      <td><span class="badge ${abPct===100?'badge-green':abPct>=60?'badge-amber':'badge-red'}">${abPct}%</span></td>
+      <td><span class="badge ${prePct===100?'badge-green':prePct>=60?'badge-amber':'badge-red'}">${prePct}%</span></td>
+      <td><span class="badge ${eqAt===0?'badge-green':'badge-red'}">${eqAt} problema${eqAt!==1?'s':''}</span></td>
+      <td style="display:flex;gap:6px">
+        <button class="btn btn-ghost btn-sm" onclick="verDetalhe(${DB.indexOf(d)})">👁</button>
+        <button class="btn btn-ghost btn-sm" onclick="exportPDFById(${DB.indexOf(d)})">📄</button>
+        <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deletarRegistro(${DB.indexOf(d)})">🗑</button>
+      </td>
+    </tr>`;
+  });
+}
+
+function filtrarHistorico() {
+  const de = document.getElementById('filt-de').value;
+  const ate = document.getElementById('filt-ate').value;
+  const turno = document.getElementById('filt-turno').value;
+  const equipe = document.getElementById('filt-equipe').value.toLowerCase();
+  let filtrado = [...DB].reverse().filter(d => {
+    if(de && d.data < de) return false;
+    if(ate && d.data > ate) return false;
+    if(turno && d.turno !== turno) return false;
+    if(equipe && !d.equipe?.toLowerCase().includes(equipe)) return false;
+    return true;
+  });
+  renderHistorico(filtrado);
+}
+
+function limparFiltros() {
+  ['filt-de','filt-ate','filt-equipe'].forEach(id => document.getElementById(id).value='');
+  document.getElementById('filt-turno').value = '';
+  renderHistorico();
+}
+
+function deletarRegistro(idx) {
+  confirmar('Deletar este registro permanentemente?', () => {
+    DB.splice(idx, 1);
+    localStorage.setItem('padaria_db', JSON.stringify(DB));
+    renderHistorico();
+    toast('🗑 Registro deletado');
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+//  DETALHE
+// ═══════════════════════════════════════════════════════
+function verDetalhe(idx) {
+  const d = DB[idx];
+  currentDetail = d;
+  const body = document.getElementById('modal-detalhe-body');
+  body.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px">
+      <div><div class="kpi-label">Data</div><strong>${formatDate(d.data)}</strong></div>
+      <div><div class="kpi-label">Turno</div><strong>${d.turno}</strong></div>
+      <div><div class="kpi-label">Equipe</div><strong>${d.equipe||'—'}</strong></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+      <div class="kpi-card amber" style="margin:0;padding:12px 16px">
+        <div class="kpi-label">Abertura do Setor</div>
+        <div class="kpi-val" style="font-size:22px">${d.abertura?.pct??0}%</div>
+      </div>
+      <div class="kpi-card blue" style="margin:0;padding:12px 16px">
+        <div class="kpi-label">Pré-Produção</div>
+        <div class="kpi-val" style="font-size:22px">${d.pre?.pct??0}%</div>
+      </div>
+    </div>
+    <div style="margin-bottom:12px">
+      <div style="font-size:12px;color:var(--text3);margin-bottom:6px;font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.5px">Produtos Produzidos</div>
+      ${d.produtos?.length ? d.produtos.map(p=>`<div style="display:flex;gap:10px;padding:5px 0;border-bottom:1px solid var(--border);font-size:13px"><span style="flex:1">${p.nome}</span><span style="color:var(--accent)">${p.kg||'—'} kg</span><span style="color:var(--text3)">${p.tempo||'—'}</span></div>`).join('') : '<span style="color:var(--text3);font-size:13px">—</span>'}
+    </div>
+    <div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:6px;font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.5px">Fluxo Operacional</div>
+      ${d.fluxo?.map(f=>`<div style="display:flex;gap:10px;padding:5px 0;border-bottom:1px solid var(--border);font-size:13px"><span style="flex:1;font-weight:500">${f.processo}</span><span style="color:var(--text3)">${f.inicio||'—'} → ${f.fim||'—'}</span><span style="color:var(--accent)">${f.total||'—'}</span></div>`).join('')||'—'}
+    </div>
+  `;
+  abrirModal('modal-detalhe');
+}
+
+// ═══════════════════════════════════════════════════════
+//  DASHBOARD
+// ═══════════════════════════════════════════════════════
+let charts = {};
+function renderDashboard() {
+  const total = DB.length;
+  document.getElementById('kpi-total').textContent = total;
+  if(!total) { document.getElementById('kpi-abertura').textContent='—'; document.getElementById('kpi-pre').textContent='—'; document.getElementById('kpi-eq').textContent='0'; return; }
+
+  const avgAb = Math.round(DB.reduce((a,d)=>a+(d.abertura?.pct??0),0)/total);
+  const avgPre = Math.round(DB.reduce((a,d)=>a+(d.pre?.pct??0),0)/total);
+  const eqAt = DB.reduce((a,d)=>a+(d.equipamentos?.filter(e=>e.status==='Atenção'||e.status==='Inoperante').length??0),0);
+  document.getElementById('kpi-abertura').textContent = avgAb+'%';
+  document.getElementById('kpi-pre').textContent = avgPre+'%';
+  document.getElementById('kpi-eq').textContent = eqAt;
+
+  const chartOpts = { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#b0a890', font: { family: 'DM Sans' } } } } };
+
+  // Conformidade
+  if(charts.conformidade) charts.conformidade.destroy();
+  charts.conformidade = new Chart(document.getElementById('chart-conformidade'), {
+    type: 'bar',
+    data: {
+      labels: ['Abertura', 'Pré-Produção'],
+      datasets: [{
+        label: 'Conformidade Média (%)',
+        data: [avgAb, avgPre],
+        backgroundColor: ['rgba(232,160,32,.7)', 'rgba(80,144,224,.7)'],
+        borderColor: ['#e8a020','#5090e0'], borderWidth: 2, borderRadius: 6
+      }]
+    },
+    options: { ...chartOpts, scales: { y: { max: 100, ticks: { color: '#706858' }, grid: { color: '#333028' } }, x: { ticks: { color: '#b0a890' }, grid: { display: false } } } }
+  });
+
+  // Turno
+  const turnos = {Manhã:0, Tarde:0, Noite:0};
+  DB.forEach(d => { if(d.turno) turnos[d.turno] = (turnos[d.turno]||0)+1; });
+  if(charts.turno) charts.turno.destroy();
+  charts.turno = new Chart(document.getElementById('chart-turno'), {
+    type: 'doughnut',
+    data: {
+      labels: Object.keys(turnos),
+      datasets: [{ data: Object.values(turnos), backgroundColor: ['#e8a020','#5090e0','#4caf82'], borderColor: '#181612', borderWidth: 3 }]
+    },
+    options: { ...chartOpts }
+  });
+
+  // Tempo por processo (média dos últimos 10)
+  const last10 = DB.slice(-10);
+  const tempoMedios = FLOW_ITEMS.map((proc, i) => {
+    const vals = last10.map(d => {
+      const fl = d.fluxo?.[i];
+      if(!fl?.inicio || !fl?.fim) return 0;
+      const [h1,m1] = fl.inicio.split(':').map(Number);
+      const [h2,m2] = fl.fim.split(':').map(Number);
+      let diff = (h2*60+m2)-(h1*60+m1);
+      return diff < 0 ? diff+1440 : diff;
+    }).filter(Boolean);
+    return vals.length ? Math.round(vals.reduce((a,b)=>a+b,0)/vals.length) : 0;
+  });
+  if(charts.tempo) charts.tempo.destroy();
+  charts.tempo = new Chart(document.getElementById('chart-tempo'), {
+    type: 'bar',
+    data: {
+      labels: FLOW_ITEMS,
+      datasets: [{ label: 'Tempo médio (min)', data: tempoMedios, backgroundColor: 'rgba(76,175,130,.7)', borderColor: '#4caf82', borderWidth: 2, borderRadius: 6 }]
+    },
+    options: { ...chartOpts, scales: { y: { ticks: { color: '#706858' }, grid: { color: '#333028' } }, x: { ticks: { color: '#b0a890' }, grid: { display: false } } } }
+  });
+
+  // Equipamentos status
+  const eqStatus = {OK:0,Atenção:0,Inoperante:0,'':`0`};
+  DB.forEach(d => d.equipamentos?.forEach(e => { if(e.status) eqStatus[e.status]=(eqStatus[e.status]||0)+1; }));
+  delete eqStatus[''];
+  if(charts.eq) charts.eq.destroy();
+  charts.eq = new Chart(document.getElementById('chart-eq'), {
+    type: 'pie',
+    data: {
+      labels: Object.keys(eqStatus),
+      datasets: [{ data: Object.values(eqStatus), backgroundColor: ['rgba(76,175,130,.8)','rgba(232,160,32,.8)','rgba(224,80,96,.8)'], borderColor: '#181612', borderWidth: 3 }]
+    },
+    options: { ...chartOpts }
+  });
+
+  // Dia da semana
+  const dias = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  const diasCount = [0,0,0,0,0,0,0];
+  DB.forEach(d => { if(d.data) diasCount[new Date(d.data+'T12:00:00').getDay()]++; });
+  if(charts.diasemana) charts.diasemana.destroy();
+  charts.diasemana = new Chart(document.getElementById('chart-diasemana'), {
+    type: 'bar',
+    data: {
+      labels: dias,
+      datasets: [{ label: 'Checklists', data: diasCount, backgroundColor: 'rgba(232,160,32,.7)', borderColor: '#e8a020', borderWidth: 2, borderRadius: 6 }]
+    },
+    options: { ...chartOpts, scales: { y: { ticks: { color: '#706858' }, grid: { color: '#333028' } }, x: { ticks: { color: '#b0a890' }, grid: { display: false } } } }
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+//  RELATÓRIOS & EXPORTAÇÃO
+// ═══════════════════════════════════════════════════════
+function renderRelatorioSelect() {
+  const sel = document.getElementById('sel-exp-pdf');
+  sel.innerHTML = '<option value="">-- Selecionar --</option>';
+  [...DB].reverse().forEach((d, idx) => {
+    sel.innerHTML += `<option value="${DB.indexOf(d)}">#${DB.indexOf(d)+1} — ${formatDate(d.data)} | ${d.turno} | ${d.equipe||'—'}</option>`;
+  });
+}
+
+function exportPDFById(idx) {
+  const i = idx !== undefined ? idx : parseInt(document.getElementById('sel-exp-pdf').value);
+  if(isNaN(i) || !DB[i]) { toast('⚠️ Selecione um registro', 'amber'); return; }
+  gerarPDF(DB[i]);
+}
+
+function exportPDFAtual() {
+  if(currentDetail) gerarPDF(currentDetail);
+}
+
+function exportPDF() {
+  const d = coletarDados();
+  if(!d.data) { toast('⚠️ Informe a data do checklist', 'amber'); return; }
+  gerarPDF(d);
+}
+
+function gerarPDF(d) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit:'mm', format:'a4' });
+  const W = 210, M = 15;
+  let y = 15;
+
+  // Header
+  doc.setFillColor(15,14,11);
+  doc.rect(0, 0, W, 30, 'F');
+  doc.setTextColor(232, 160, 32);
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(16);
+  doc.text('CHECKLIST DE PRODUÇÃO — PADARIA', W/2, 12, {align:'center'});
+  doc.setTextColor(176, 168, 144);
+  doc.setFontSize(9);
+  doc.text('PONTO CERTO SUPERMERCADO', W/2, 19, {align:'center'});
+  doc.setTextColor(100,90,80);
+  doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, W/2, 25, {align:'center'});
+  y = 38;
+
+  // Meta
+  doc.setTextColor(50,50,50);
+  doc.setFillColor(240,235,225);
+  doc.roundedRect(M, y, W-M*2, 14, 2, 2, 'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(9);
+  doc.setTextColor(100,80,20);
+  doc.text(`DATA: ${formatDate(d.data)}`, M+4, y+6);
+  doc.text(`TURNO: ${d.turno||'—'}`, M+55, y+6);
+  doc.text(`EQUIPE: ${d.equipe||'—'}`, M+100, y+6);
+  y += 20;
+
+  const section = (title) => {
+    doc.setFillColor(30,27,20);
+    doc.rect(M, y, W-M*2, 8, 'F');
+    doc.setTextColor(232,160,32); doc.setFont('helvetica','bold'); doc.setFontSize(9);
+    doc.text(title, M+3, y+5.5);
+    y += 12;
+  };
+
+  // Produtos
+  if(d.produtos?.length) {
+    section('1. TIPO DE PRODUÇÃO');
+    d.produtos.forEach(p => {
+      doc.setTextColor(50,50,50); doc.setFont('helvetica','normal'); doc.setFontSize(9);
+      doc.text(`• ${p.nome||'—'}   ${p.kg||'—'} kg   ${p.tempo||'—'}`, M+3, y);
+      y += 6;
+    });
+    y += 4;
+  }
+
+  // Abertura
+  section('2. CHECKLIST DE ABERTURA DO SETOR');
+  doc.setFontSize(8);
+  ABERTURA_ITEMS.forEach((item, i) => {
+    const ok = d.abertura?.checks?.[i];
+    doc.setTextColor(ok ? 40 : 180, ok ? 120 : 40, ok ? 70 : 40);
+    doc.text(ok ? '✓' : '✗', M+3, y);
+    doc.setTextColor(50,50,50);
+    doc.text(item, M+9, y);
+    if(d.abertura?.obs?.[i]) { doc.setTextColor(100,100,100); doc.text(d.abertura.obs[i], M+80, y); }
+    y += 5.5;
+  });
+  y += 4;
+
+  // Pre-producao
+  if(y > 240) { doc.addPage(); y = 15; }
+  section('3. CHECKLIST DE PRÉ-PRODUÇÃO');
+  doc.setFontSize(8);
+  PRE_ITEMS.forEach((item, i) => {
+    const ok = d.pre?.checks?.[i];
+    doc.setTextColor(ok ? 40 : 180, ok ? 120 : 40, ok ? 70 : 40);
+    doc.text(ok ? '✓' : '✗', M+3, y);
+    doc.setTextColor(50,50,50);
+    doc.text(item, M+9, y);
+    y += 5.5;
+  });
+  y += 4;
+
+  // Fluxo
+  if(y > 220) { doc.addPage(); y = 15; }
+  section('4. FLUXO OPERACIONAL');
+  doc.setFontSize(8); doc.setTextColor(100,90,80);
+  doc.text('Processo', M+3, y); doc.text('Início', M+60, y); doc.text('Fim', M+85, y); doc.text('Total', M+110, y); doc.text('Problemas', M+135, y);
+  y += 5;
+  d.fluxo?.forEach(f => {
+    doc.setTextColor(50,50,50);
+    doc.text(f.processo, M+3, y); doc.text(f.inicio||'—', M+60, y); doc.text(f.fim||'—', M+85, y);
+    doc.text(f.total||'—', M+110, y); doc.text((f.problema||'').substring(0,25), M+135, y);
+    y += 5.5;
+  });
+  y += 4;
+
+  // Equipamentos
+  if(y > 200) { doc.addPage(); y = 15; }
+  section('5. CHECKLIST TÉCNICO DE EQUIPAMENTOS');
+  doc.setFontSize(8); doc.setTextColor(100,90,80);
+  doc.text('Equipamento', M+3, y); doc.text('Ponto', M+45, y); doc.text('Status', M+105, y); doc.text('Ação', M+135, y);
+  y += 5;
+  d.equipamentos?.forEach(e => {
+    const col = e.status==='OK'?[40,140,80]:e.status==='Atenção'?[180,120,20]:[200,50,60];
+    doc.setTextColor(50,50,50);
+    doc.text(e.equip, M+3, y); doc.text(e.ponto, M+45, y);
+    doc.setTextColor(...col);
+    doc.text(e.status||'—', M+105, y);
+    doc.setTextColor(80,80,80);
+    doc.text((e.acao||'').substring(0,22), M+135, y);
+    y += 5.5;
+  });
+
+  // Observações
+  if(d.observacoes?.length) {
+    if(y > 230) { doc.addPage(); y = 15; }
+    section('6. OBSERVAÇÕES E AÇÕES CORRETIVAS');
+    doc.setFontSize(8);
+    d.observacoes.forEach(o => {
+      doc.setTextColor(50,50,50);
+      doc.text(`${o.local||'—'}: ${o.desc||'—'} → ${o.corr||'—'}`, M+3, y);
+      y += 5.5;
+    });
+  }
+
+  // Footer
+  const pgs = doc.getNumberOfPages();
+  for(let p=1;p<=pgs;p++) {
+    doc.setPage(p);
+    doc.setFillColor(15,14,11);
+    doc.rect(0,287,W,10,'F');
+    doc.setTextColor(100,90,80); doc.setFontSize(7);
+    doc.text('Criado por Flávio Monteiro — Padaria Ponto Certo', M, 293);
+    doc.text(`Página ${p} / ${pgs}`, W-M, 293, {align:'right'});
+  }
+
+  doc.save(`checklist_padaria_${d.data||'sem-data'}.pdf`);
+  toast('📄 PDF gerado com sucesso!');
+}
+
+function exportJSON() {
+  const de = document.getElementById('exp-de')?.value;
+  const ate = document.getElementById('exp-ate')?.value;
+  let dados = DB;
+  if(de || ate) {
+    dados = DB.filter(d => (!de || d.data >= de) && (!ate || d.data <= ate));
+  }
+  const blob = new Blob([JSON.stringify({version:'1.0',exportDate:new Date().toISOString(),dados}, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `backup_padaria_${new Date().toISOString().split('T')[0]}.json`;
+  a.click();
+  toast('⬇ Backup exportado!');
+}
+
+function importarJSON() {
+  const input = document.getElementById('import-file');
+  if(!input?.files?.length) {
+    const inp = document.createElement('input');
+    inp.type='file'; inp.accept='.json';
+    inp.onchange = e => processarImport(e.target.files[0]);
+    inp.click(); return;
+  }
+  processarImport(input.files[0]);
+}
+
+function processarImport(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const json = JSON.parse(e.target.result);
+      const dados = json.dados || json;
+      if(!Array.isArray(dados)) throw new Error('Formato inválido');
+      let count = 0;
+      dados.forEach(d => {
+        if(!DB.find(x => x.id === d.id)) { DB.push(d); count++; }
+      });
+      localStorage.setItem('padaria_db', JSON.stringify(DB));
+      toast(`✅ ${count} registro(s) importado(s)!`);
+      renderHistorico();
+      renderBackup();
+    } catch(err) { toast('❌ Erro ao importar: ' + err.message, 'red'); }
+  };
+  reader.readAsText(file);
+}
+
+// ═══════════════════════════════════════════════════════
+//  BACKUP
+// ═══════════════════════════════════════════════════════
+function renderBackup() {
+  document.getElementById('bk-total').textContent = DB.length;
+  const size = new Blob([JSON.stringify(DB)]).size;
+  document.getElementById('bk-size').textContent = (size/1024).toFixed(1) + ' KB armazenados';
+  const resumo = document.getElementById('backup-resumo');
+  const turnos = {};
+  DB.forEach(d => { turnos[d.turno||'—']=(turnos[d.turno||'—']||0)+1; });
+  resumo.innerHTML = Object.entries(turnos).map(([k,v])=>`<div class="kpi-card amber" style="margin:0;padding:12px 16px"><div class="kpi-label">${k}</div><div class="kpi-val" style="font-size:22px">${v}</div><div class="kpi-sub">registros</div></div>`).join('');
+}
+
+function limparHistoricoConfirm() {
+  confirmar('Deseja APAGAR todo o histórico? Esta ação não pode ser desfeita.', () => {
+    DB = [];
+    localStorage.removeItem('padaria_db');
+    renderHistorico();
+    renderBackup();
+    toast('🗑 Histórico limpo', 'red');
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+//  UTILITÁRIOS
+// ═══════════════════════════════════════════════════════
+function formatDate(str) {
+  if(!str) return '—';
+  const [y,m,d] = str.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+function toast(msg, type) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.borderLeftColor = type==='red'?'var(--red)':type==='amber'?'var(--accent)':'var(--green)';
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+function abrirModal(id) { document.getElementById(id).classList.add('open'); }
+function fecharModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function confirmar(msg, fn) {
+  document.getElementById('modal-confirm-body').innerHTML = `<p style="font-size:14px;color:var(--text2)">${msg}</p>`;
+  document.getElementById('btn-confirm-ok').onclick = () => { fn(); fecharModal('modal-confirm'); };
+  abrirModal('modal-confirm');
+}
+
+// close modal on overlay click
+document.querySelectorAll('.modal-overlay').forEach(el => {
+  el.addEventListener('click', e => { if(e.target === el) el.classList.remove('open'); });
+});
+
+// ═══════════════════════════════════════════════════════
+//  BOOT
+// ═══════════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+  initChecklist();
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('today-tag').textContent = '📅 ' + formatDate(today);
+});
+</script>
+</body>
+</html>
